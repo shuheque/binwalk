@@ -2,9 +2,14 @@
 # This is automatically invoked by core.module code if extraction has been
 # enabled by the user; other modules need not reference this module directly.
 
+import platform
+IS_WIN32 = 'windows' == platform.system().lower()
+
 import os
 import re
-import pwd
+# jiang
+if not IS_WIN32:
+    import pwd
 import stat
 import shlex
 import tempfile
@@ -137,7 +142,8 @@ class Extractor(Module):
         self.runas_uid = None
         self.runas_gid = None
 
-        if self.enabled is True:
+        # Jiang
+        if (not IS_WIN32) and (self.enabled is True):
             if self.runas_user is None:
                 # Get some info about the current user we're running under
                 user_info = pwd.getpwuid(os.getuid())
@@ -576,8 +582,10 @@ class Extractor(Module):
         else:
             output_directory = self.extraction_directories[path]
 
+        # jiang
         # Make sure run-as user can access this directory
-        os.chown(output_directory, self.runas_uid, self.runas_gid)
+        if not IS_WIN32:
+            os.chown(output_directory, self.runas_uid, self.runas_gid)
 
         return output_directory
 
@@ -872,8 +880,10 @@ class Extractor(Module):
             fdout.close()
             fdin.close()
 
+            # jiang
             # Make sure run-as user can access this file
-            os.chown(fname, self.runas_uid, self.runas_gid)
+            if not IS_WIN32:
+                os.chown(fname, self.runas_uid, self.runas_gid)
         except KeyboardInterrupt as e:
             raise e
         except Exception as e:
@@ -960,8 +970,9 @@ class Extractor(Module):
         else:
             tmp = None
 
+        # Jiang
         # If a run-as user is not the current user, we'll need to switch privileges to that user account
-        if self.runas_uid != os.getuid():
+        if (not IS_WIN32) and self.runas_uid != os.getuid():
             binwalk.core.common.debug("Switching privileges to %s (%d:%d)" % (self.runas_user, self.runas_uid, self.runas_gid))
             
             # Fork a child process
